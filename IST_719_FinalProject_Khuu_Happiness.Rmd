@@ -1,0 +1,336 @@
+---
+title: "Happiness_Up_To_Date_v2"
+author: "Jimmy Chen, Ali Ho, Cindy Khuu, Kendra Osburn"
+date: "6/17/2019"
+output: html_document
+---
+Load Libraries
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+```
+
+Setting Up data, previous provided by Ali
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+# setwd("C:\\Users\\ho511\\Desktop\\IST 719\\Final Project")
+setwd("/Users/kendraosburn/syracuse/719/Happiness/FinalProject_Group/")
+#Reading in the 3 datasets for 2015, 2016, 2017 
+
+happiness2015 <- read.csv("2015.csv", header = TRUE)
+happiness2016 <- read.csv("2016.csv", header = TRUE)
+happiness2017 <- read.csv("2017.csv", header = TRUE)
+
+#Looking at the columns for each df 
+str(happiness2015)
+#Country, Region, Happiness.Rank, Happiness.Score, Standard.Error, Ecodomy..GDP.per.Capita, Family, Health..Life.Expectancy., 
+#Freedom, Trust..Government.Corruption, Generosity, Dystopia.Residual 
+
+#Changing column names 
+colnames(happiness2015) <- c("country", "region", "happiness_rank", "happiness_score", "standard_error", "economy_gdp_per_capita", "family", "health_life_expectancy", "freedom", "trust_government_corruption", "generosity", "dystopia_residual")
+
+str(happiness2015)
+
+#Getting structure for happiness2016
+str(happiness2016)
+#country, region, happiness.rank, happiness.score, lower.confidence.interval, upper.confidence.interval, economy,,gdp,per.capita, family 
+# health.life.expectancy, freedom, trust..government.corruption, generosity, dystopia.residual 
+
+colnames(happiness2016) <- c("country", "region", "happiness_rank", "happiness_score", "lower_confidence_interval", "upper_confidence_interval", "economy_gdp_per_capita", "family", "health_life_expectancy", "freedom", "trust_government_corruption", "generosity", "dystopia_residual")
+
+str(happiness2016)
+
+#Getting structure for happiness 
+str(happiness2017)
+
+#country, region, happiness.rank, happiness.score, whisker.high, whisker.low, economy.gdp.per.capita, family, health.life.expectancy, freedom, 
+#generosity, trust.government.corruption, dystopia.residual 
+
+colnames(happiness2017) <- c("country", "region", "happiness_rank", "happiness_score", "whisker_high", "whisker_low", "economy_gdp_per_capita", "family", "health_life_expectancy", "freedom", "generosity", "trust_government_corruption", "dystopia_residual")
+
+
+str(happiness2017)
+
+#The columns that are the same are country, happiness_rank, happiness_score, economy_gdp_per_capita, family, health_life_expectancy, freedom 
+# generosity, trust_government_corruption, dustopia_residual 
+#Therefore we are only going to keep those columns for each of the datasets and then we will combine the dfs 
+
+#Creating a df for each year with only the columns we are interested in  
+happiness2015 <- happiness2015 %>%
+  select("country", "region", "happiness_rank", "happiness_score", "economy_gdp_per_capita", "family", 
+         "health_life_expectancy", "freedom", "trust_government_corruption", "generosity", "dystopia_residual")
+
+happiness2016 <- happiness2016 %>%
+  select("country", "region", "happiness_rank", "happiness_score", "economy_gdp_per_capita", "family", 
+         "health_life_expectancy", "freedom", "trust_government_corruption", "generosity", "dystopia_residual")
+
+happiness2017 <- happiness2017 %>%
+  select("country", "region", "happiness_rank", "happiness_score", "economy_gdp_per_capita", "family", 
+         "health_life_expectancy", "freedom", "trust_government_corruption", "generosity", "dystopia_residual")
+
+#Combining the 3 dfs together using row bind 
+happiness <- rbind(happiness2015, happiness2016, happiness2017)
+
+#Getting the structure 
+str(happiness)
+
+#I think that we need to find the percentages for how each variable contributes to the individual happiness_score... I think that is the only 
+#true way to actually compare the different factors 
+```
+
+COLORS
+```{r}
+# iteration 1, photoshop colors
+# gdp = "#abc437" #green
+# family = "#ef8326" #orange
+# freedom = "#d85654" #red
+# trust_gov = "#51b4d9" #blue
+# generosity =  "#ffe92f" #yellow
+# health = "#e565f1" #purpleish
+# na = "#d1d1d1" #gray
+
+# iteration 2, illustrator colors
+gdp = "#2ab34b" #green
+health = "#f3766e" #salmon
+family = "#1cbdc2" #blue
+trust_gov = "#b6a031" #yellow
+freedom =  "#7094cd" #dark blue
+generosity = "#cc72ae" #purpleish
+na = "#d1d1d1" #gray
+```
+PLOTTING IT
+```{r}
+h2015 <- happiness2015[order(happiness2015$country),]
+h2017 <- happiness2017[order(happiness2017$country),]
+hdelta <- data.frame(h2015$country, h2017$happiness_score - h2015$happiness_score)
+colnames(hdelta) <- c("country", "happiness_score")
+hdelta$delta <- ifelse(hdelta$happiness_score < 0, "neg", "pos")
+
+feature <- data.frame(GDP = h2017$economy_gdp_per_capita - h2015$economy_gdp_per_capita,
+                      FAM = h2017$family - h2015$family,
+                      HEALTH = h2017$health_life_expectancy - h2015$health_life_expectancy,
+                      FREEDOM = h2017$freedom - h2015$freedom,
+                      GOVTRUST = h2017$trust_government_corruption -
+                      h2015$trust_government_corruption,
+                      GENEROSITY = h2017$generosity - h2015$generosity)
+
+
+hdelta$MIN <- colnames(feature)[apply(feature,1,which.min)]
+hdelta$MAX <- colnames(feature)[apply(feature,1,which.max)]
+
+hdelta$effect <- ifelse(hdelta$happiness_score < 0, hdelta$MIN, hdelta$MAX)
+
+hdelta <- hdelta[order(-abs(hdelta$happiness_score)),]
+hdelta <- hdelta[1:30,]
+hdelta <- hdelta[order(hdelta$delta, hdelta$happiness_score),]
+hdelta$country <- factor(hdelta$country, levels = hdelta$country)
+
+## scale_fill_manual added so variables up top can determine color
+ggplot(hdelta, aes(x=country, happiness_score, label=hdelta$effect)) + 
+  geom_bar(stat='identity', aes(fill = hdelta$effect), width=.8) +
+  labs(subtitle="of the top 30 most changed countires", 
+       title= "Happiness Score Change") + 
+  ylab("Happiness Score Change") +
+  xlab("Country") +
+  scale_fill_manual(values=c(family, freedom, gdp, generosity, trust_gov, health)) +
+  coord_flip()
+
+ggsave("changes.pdf",  width = 8, height = 11, units = "in")
+ggsave("changes_big_30.pdf",  width = 6, height = 12, units = "in")
+ggsave("changes_big_30_wider.pdf",  width = 16, height = 12, units = "in")
+
+```
+
+World Map Graph - Data Processing 
+```{r}
+#The following steps are necessary to create a world map that is colored in by highest attribute 
+library(data.table)
+average_happiness <- rbindlist(list(happiness2015, happiness2016, happiness2017))[,lapply(.SD,mean), list(country, region)]
+
+# Add columns that take variable value as a percentage of total happiness score
+average_happiness$Percent_economy_gdp_per_capita = average_happiness$economy_gdp_per_capita/ average_happiness$happiness_score * 100
+average_happiness$Percent_family = average_happiness$family/ average_happiness$happiness_score * 100
+average_happiness$Percent_health_life_expectancy= average_happiness$health_life_expectancy/ average_happiness$happiness_score * 100
+average_happiness$Percent_freedom= average_happiness$freedom/ average_happiness$happiness_score * 100
+average_happiness$Percent_trust_government_corruption= average_happiness$trust_government_corruption/ average_happiness$happiness_score * 100
+average_happiness$Percent_generosity= average_happiness$generosity/ average_happiness$happiness_score * 100
+average_happiness$Percent_dystopia_residual= average_happiness$dystopia_residual/ average_happiness$happiness_score * 100
+
+# Create subset of data with only percentages
+#Creating a df for each year with only the columns we are interested in  
+average_percent_happiness <- average_happiness %>%
+  select("country", "Percent_economy_gdp_per_capita", "Percent_family", "Percent_health_life_expectancy", "Percent_freedom", "Percent_trust_government_corruption", "Percent_generosity")
+
+label <- average_percent_happiness$country
+average_percent_happiness <- average_percent_happiness[,-1]
+#Trying to figure out how to calculate which column is the maximum for each row 
+average_percent_happiness$influential <- max.col(average_percent_happiness, ties.method = "first")
+
+#bringing the country label back 
+average_percent_happiness$country <- label
+
+average_percent_happiness$influential <- gsub(1, "economy gdp per capita", average_percent_happiness$influential)
+average_percent_happiness$influential <- gsub(2, "family", average_percent_happiness$influential)
+average_percent_happiness$influential <- gsub(3, "health life expectancy", average_percent_happiness$influential)
+average_percent_happiness$influential <- gsub(4, "freedom", average_percent_happiness$influential)
+```
+
+World Map Graph 
+```{r}
+#changing the theme to black and white which looks nice for maps 
+theme_set(theme_bw())
+
+#getting map information saved in r maps 
+world_map <- map_data('world')
+
+#Looking at country names 
+unique(world_map$region)
+
+#By exploring the countries in the world map it looks like they refer to the United States as the United States of America and the United Kingdom as UK... Need to change this 
+average_percent_happiness$country <- as.character(average_percent_happiness$country)
+average_percent_happiness$country[average_percent_happiness$country == "United States"] <- "USA"
+average_percent_happiness$country[average_percent_happiness$country == "United Kingdom"] <- "UK"
+
+
+#Joining the dataframes together 
+joined <- left_join(world_map, average_percent_happiness, by = c('region' = 'country'))
+
+#Now I am ready to create the world map 
+
+(happiness_map <- ggplot(data = joined, (aes(x = long, y = lat, group = group))) + 
+    geom_polygon(aes(fill = influential), color = "black") + 
+    ggtitle("Most Influential Factor for Each Country's Happiness", subtitle = "Economy gdp per capita and family were the most influential factors for the majority of the countries' happiness score") +
+    coord_quickmap() + 
+    guides(fill=guide_legend(title = "Most Influential Factor")) )
+ggsave("world1.pdf",  width = 24, height = 20, units = "in")
+ggsave("world1_big.pdf",  width = 30, height = 20, units = "in")
+
+(happiness_map <- ggplot(data = joined, (aes(x = long, y = lat, group = group))) + 
+    geom_polygon(aes(fill = influential), color = "black") + 
+    ggtitle("Most Influential Factor for Each Country's Happiness", subtitle = "Economy gdp per capita and family were the most influential factors for the majority of the countries' happiness score") +
+    coord_quickmap() + 
+    guides(fill=guide_legend(title = "Most Influential Factor")) +
+    scale_fill_manual(values=c(gdp, family, freedom, health, generosity, trust_gov)) +
+    theme_dark())
+ggsave("world2.pdf", width = 24, height = 20, units = "in")
+ggsave("world2_big.pdf", width = 30, height = 20, units = "in")
+```
+Box and Whiskers
+```{r}
+freedom <- average_percent_happiness %>% 
+  select("country", "Percent_freedom")
+
+freedom$factor <- rep("freedom", 151)
+
+colnames(freedom) <- c("country", "value", "factor")
+
+family <- average_percent_happiness %>% 
+  select("country", "Percent_family")
+
+family$factor <- rep("family", 151)
+
+colnames(family) <- c("country", "value", "factor")
+
+health <- average_percent_happiness %>% 
+  select("country", "Percent_health_life_expectancy")
+
+health$factor <- rep("Health Life Expectancy", 151)
+
+colnames(health) <- c("country", "value", "factor")
+
+economy <- average_percent_happiness %>% 
+  select("country", "Percent_economy_gdp_per_capita")
+
+economy$factor <- rep("GDP", 151)
+
+colnames(economy) <- c("country", "value", "factor")
+
+trust <- average_percent_happiness %>% 
+  select("country", "Percent_trust_government_corruption")
+
+trust$factor <- rep("Trust Government Corruption", 151)
+
+colnames(trust) <- c("country", "value", "factor")
+
+generosity <- average_percent_happiness %>% 
+  select("country", "Percent_generosity")
+
+generosity$factor <- rep("generosity", 151)
+
+colnames(generosity) <- c("country", "value", "factor")
+
+combined_facet <- rbind(freedom, family, health, economy, trust, generosity)
+
+library(ggthemes)
+ggplot(combined_facet, aes("", value)) + 
+  geom_boxplot(color="#cccccc") + 
+  stat_summary(fun.y=mean, geom="point", shape = 20, size = 5, color = "black") + 
+  scale_color_manual(values = c("white"))+
+  facet_wrap(~factor, ncol = 6) +
+  theme(panel.spacing = unit(3, "lines")) +
+  theme_tufte()
+
+ggsave("boxplots_light_sm_tufte.pdf",  width = 20, height = 3, units = "in", useDingbats=FALSE)
+
+```
+Top 40 Happiest
+Bottom 40 Least Happy
+```{r}
+
+gdp = "#2ab34b" #green
+health = "#f3766e" #salmon
+family = "#1cbdc2" #blue
+trust_gov = "#b6a031" #yellow
+freedom =  "#7094cd" #dark blue
+generosity = "#cc72ae" #purpleish
+
+# Create a new column called avg which is country avg
+test<- happiness %>%
+  group_by(country) %>%
+  mutate(avg_happiness_score = mean(happiness_score),
+         avg_gdp = mean(economy_gdp_per_capita),
+         avg_family = mean(family),
+         avg_health = mean(health_life_expectancy),
+         avg_freedom = mean(freedom),
+         avg_gov_trust = mean(trust_government_corruption),
+         avg_generosity = mean(generosity)) %>%
+  ungroup()
+
+#Only the columns I care about
+test_sm <- select(test, country, avg_happiness_score, avg_gdp, avg_family, avg_health,
+                  avg_freedom, avg_gov_trust, avg_generosity)
+
+test_unique <- unique(test_sm)
+test_unique_left <- test_unique[,1:2]
+test_unique_right <- test_unique[,3:8]
+
+test_unique_right$max_value <- colnames(test_unique_right)[apply(test_unique_right,1,which.max)]
+
+combined_again <- data.frame(test_unique_left, test_unique_right)
+
+#Arranging
+combined_again_2 <- combined_again %>%
+  arrange(desc(avg_happiness_score))
+
+top <- combined_again_2[1:20,]
+bottom <- combined_again_2[131:151,]
+
+ggplot(top, aes(x=reorder(country, avg_happiness_score), y=avg_happiness_score, fill=max_value)) +
+  geom_bar(stat="identity") +
+  coord_flip(ylim=c(5.75,7.65)) +
+  scale_fill_manual(values=c(family, gdp)) +
+  theme(axis.text.x = element_text(angle = 90))
+ggsave("top.pdf",  width = 8, height = 11, units = "in")
+ggsave("top_big_20_sm.pdf",  width = 6, height = 12, units = "in")
+
+ggplot(bottom, aes(x=reorder(country, avg_happiness_score), y=avg_happiness_score, fill=max_value)) +
+  geom_bar(stat="identity") + 
+  scale_fill_manual(values=c(family, freedom, gdp)) +
+  coord_flip(ylim=c(2,4.5)) +
+  theme(axis.text.x = element_text(angle = 90))
+ggsave("bottom.pdf",  width = 8, height = 11, units = "in")
+ggsave("bottom_big_20_sm.pdf",  width = 6, height = 12, units = "in")
+
+```
+
+
