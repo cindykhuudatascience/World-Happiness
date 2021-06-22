@@ -14,7 +14,7 @@ library(dplyr)
 Setting Up data, previous provided by Ali
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 # setwd("C:\\Users\\ho511\\Desktop\\IST 719\\Final Project")
-setwd("/Users/kendraosburn/syracuse/719/Happiness/FinalProject_Group/")
+setwd("/Users/syracuse/719/Happiness/FinalProject_Group/")
 #Reading in the 3 datasets for 2015, 2016, 2017 
 
 happiness2015 <- read.csv("2015.csv", header = TRUE)
